@@ -1,10 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Secure HLS Player</title>
-  <link href="https://vjs.zencdn.net/8.6.1/video-js.css" rel="stylesheet">
+  <link href="https://vjs.zencdn.net/8.6.1/video-js.css" rel="stylesheet" />
+  <style>
+    body { background: #000; margin: 0; padding: 20px; }
+    .video-js { width: 100%; max-width: 900px; margin: 0 auto; }
+  </style>
 </head>
 <body>
   <video-js
@@ -12,45 +16,36 @@
     class="vjs-default-skin"
     controls
     preload="auto"
-    width="100%"
-    height="auto"
-    data-setup='{"fluid": true}'>
-    <source src="http://localhost:3000/secure-stream?token=your-secret-token-123" type="application/x-mpegURL">
-    <p class="vjs-no-js">Enable JavaScript for video playback.</p>
-  </video-js>
+    playsinline
+  ></video-js>
 
+  <!-- Video.js + IMA for ads -->
   <script src="https://vjs.zencdn.net/8.6.1/video.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@videojs/http-streaming@3.4.1/dist/videojs-http-streaming.min.js"></script>
+  <script src="https://imasdk.googleapis.com/js/sdkloader/ima3.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/videojs-ima@latest/dist/videojs.ima.min.js"></script>
+
   <script>
-    const player = videojs('my-player', {
-      html5: {
-        hls: {
-          overrideNative: true,  // Use HLS.js for all browsers
-          enableLowInitialPlaylist: true,  // Quick start
-          smoothQualityChange: true  // No buffering on quality switch
-        }
-      },
-      playbackRates: [0.5, 1, 1.25, 1.5, 2],  // Speed controls
-      controlBar: {
-        volumePanel: { inline: false },  // Volume slider
-        pictureInPictureToggle: true,
-        fullscreenToggle: true
-      }
-    });
+    // Fetch the protected stream URL
+    fetch('/api/stream')
+      .then(res => {
+        if (!res.ok) throw new Error('Stream not authorized');
+        return res.json();
+      })
+      .then(data => {
+        const player = videojs('my-player', {
+          sources: [{ src: data.url, type: 'application/x-mpegURL' }]
+        });
 
-    // Basic error handling
-    player.ready(() => {
-      console.log('Player ready!');
-      player.on('error', () => {
-        const err = player.error();
-        if (err && err.code === 4) {
-          player.error({ code: 4, message: 'Stream failed. Check token or connection.' });
-        }
+        // Load pre-roll ad (Google test ad)
+        player.ima({
+          id: 'my-player',
+          adTagUrl: 'https://pubads.g.doubleclick.net/gampad/ads?sz=640x480&iu=/124319096/external/ad_rule_samples&ciu_szs=300x250&ad_rule=1&impl=s&gdfp_req=1&env=vp&output=vast&unviewed_position_start=1&cust_params=deployment%3Ddevsite%26sample_ar%3Dpreonly&cmsid=496&vid=short_onecue&correlator='
+        });
+      })
+      .catch(err => {
+        console.error(err);
+        document.body.innerHTML = '<h2 style="color:white;text-align:center">Stream not available</h2>';
       });
-    });
-
-    // Auto-play test (remove in production for user consent)
-    player.play();
   </script>
 </body>
 </html>
