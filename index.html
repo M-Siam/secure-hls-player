@@ -4,9 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Secure HLS Player</title>
-  <link href="https://vjs.zencdn.net/8.6.1/video-js.css" rel="stylesheet" />
+  <!-- Video.js 7.22.1 (compatible with IMA) -->
+  <link href="https://vjs.zencdn.net/7.22.1/video-js.css" rel="stylesheet">
   <style>
-    body { background: #000; margin: 0; padding: 20px; }
+    body { background: #000; margin: 0; padding: 10px; }
     .video-js { width: 100%; max-width: 900px; margin: 0 auto; }
   </style>
 </head>
@@ -19,32 +20,33 @@
     playsinline
   ></video-js>
 
-  <!-- Video.js + IMA for ads -->
-  <script src="https://vjs.zencdn.net/8.6.1/video.min.js"></script>
-  <script src="https://imasdk.googleapis.com/js/sdkloader/ima3.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/videojs-ima@latest/dist/videojs.ima.min.js"></script>
+  <!-- Load in EXACT order -->
+  <script src="https://vjs.zencdn.net/7.22.1/video.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/videojs-contrib-ads@6.0.1/dist/videojs-contrib-ads.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/videojs-ima@3.9.0/dist/videojs.ima.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/videojs-ima@3.9.0/dist/videojs.ima.css" rel="stylesheet">
 
   <script>
-    // Fetch the protected stream URL
+    // Fetch stream URL
     fetch('/api/stream')
-      .then(res => {
-        if (!res.ok) throw new Error('Stream not authorized');
-        return res.json();
-      })
+      .then(res => res.json())
       .then(data => {
         const player = videojs('my-player', {
-          sources: [{ src: data.url, type: 'application/x-mpegURL' }]
+          sources: [{ src: data.url, type: 'application/x-mpegURL' }],
+          fluid: true
         });
 
-        // Load pre-roll ad (Google test ad)
-        player.ima({
-          id: 'my-player',
-          adTagUrl: 'https://pubads.g.doubleclick.net/gampad/ads?sz=640x480&iu=/124319096/external/ad_rule_samples&ciu_szs=300x250&ad_rule=1&impl=s&gdfp_req=1&env=vp&output=vast&unviewed_position_start=1&cust_params=deployment%3Ddevsite%26sample_ar%3Dpreonly&cmsid=496&vid=short_onecue&correlator='
+        // Initialize IMA ads AFTER player is ready
+        player.ready(() => {
+          player.ima({
+            id: 'my-player',
+            adTagUrl: 'https://pubads.g.doubleclick.net/gampad/ads?sz=640x480&iu=/124319096/external/ad_rule_samples&ciu_szs=300x250&ad_rule=1&impl=s&gdfp_req=1&env=vp&output=vast&unviewed_position_start=1&cust_params=deployment%3Ddevsite%26sample_ar%3Dpreonly&cmsid=496&vid=short_onecue&correlator='
+          });
         });
       })
       .catch(err => {
-        console.error(err);
-        document.body.innerHTML = '<h2 style="color:white;text-align:center">Stream not available</h2>';
+        console.error('Stream load error:', err);
+        document.body.innerHTML = '<h2 style="color:white;text-align:center">Stream unavailable</h2>';
       });
   </script>
 </body>
